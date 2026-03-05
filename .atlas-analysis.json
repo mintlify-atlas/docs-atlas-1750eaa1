@@ -1,0 +1,76 @@
+{
+  "projectType": "frontend",
+  "projectName": "Action List Opportunity",
+  "projectDescription": "A Salesforce Lightning Web Component for managing and filtering Opportunity records with an interactive datatable interface",
+  "theme": "palm",
+  "primaryColor": "#0176d3",
+  "lightColor": "#1b96ff",
+  "darkColor": "#014486",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Components",
+            "pages": [
+              "components/operation-datatable",
+              "components/configuration",
+              "components/styling"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/filtering",
+              "guides/row-selection",
+              "guides/apex-integration"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Lightning Web Component",
+            "pages": [
+              "api/lwc/properties",
+              "api/lwc/methods",
+              "api/lwc/events"
+            ]
+          },
+          {
+            "group": "Apex Controller",
+            "pages": [
+              "api/apex/opportunity-controller"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Interactive datatable with Lightning Design System styling",
+    "Server-side and client-side filtering capabilities",
+    "Row selection and management",
+    "Dynamic search across Opportunity fields",
+    "Responsive layout for mobile and desktop"
+  ],
+  "publicApiSurface": [
+    "operationDatatable component",
+    "OpportunityController.getAllOpportunity",
+    "columns configuration",
+    "renderConfig properties",
+    "handleRowSelectionTable event",
+    "handleChangeFilter event"
+  ]
+}
