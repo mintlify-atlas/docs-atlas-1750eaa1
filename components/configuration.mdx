@@ -1,0 +1,357 @@
+---
+title: 'Component Configuration'
+description: 'Configure columns, rendering, and behavior of the Operation Datatable'
+icon: 'sliders'
+---
+
+## Column Configuration
+
+Columns are defined in the JavaScript controller and determine what data is displayed in the datatable.
+
+### Column Definition Structure
+
+```javascript
+const columns = [
+   { label: 'Name', fieldName: 'Name' },
+   { label: 'StageName', fieldName: 'StageName' },
+   { label: 'CreatedDate', fieldName: 'CreatedDate', type: 'date' },
+   { label: 'LeadSource', fieldName: 'LeadSource' },
+];
+```
+
+### Column Properties
+
+<ParamField path="label" type="string" required>
+  The display text shown in the column header
+</ParamField>
+
+<ParamField path="fieldName" type="string" required>
+  The API name of the Salesforce field to display
+</ParamField>
+
+<ParamField path="type" type="string" default="text">
+  The data type for formatting. Options include:
+  - `text` (default)
+  - `date`
+  - `currency`
+  - `percent`
+  - `number`
+  - `url`
+  - `email`
+  - `phone`
+</ParamField>
+
+### Adding New Columns
+
+To add additional Opportunity fields to the datatable:
+
+<Steps>
+  <Step title="Update Apex Query">
+    Add the field to the SOQL query in `OpportunityController.cls`:
+    
+    ```apex
+    String query = 'SELECT Id, Name, StageName, CreatedDate, LeadSource, Amount FROM Opportunity';
+    ```
+  </Step>
+  
+  <Step title="Add Column Definition">
+    Add the column to the `columns` array:
+    
+    ```javascript
+    const columns = [
+       { label: 'Name', fieldName: 'Name' },
+       { label: 'StageName', fieldName: 'StageName' },
+       { label: 'CreatedDate', fieldName: 'CreatedDate', type: 'date' },
+       { label: 'LeadSource', fieldName: 'LeadSource' },
+       { label: 'Amount', fieldName: 'Amount', type: 'currency' },
+    ];
+    ```
+  </Step>
+  
+  <Step title="Update Filter Options (Optional)">
+    If the field should be filterable, add it to the options:
+    
+    ```javascript
+    get options() {
+       return [
+          { label: 'None', value: '' },
+          { label: 'Name', value: 'Name' },
+          { label: 'StageName', value: 'StageName' },
+          { label: 'LeadSource', value: 'LeadSource' },
+       ];
+    }
+    ```
+  </Step>
+</Steps>
+
+## RenderConfig Options
+
+The `renderConfig` property controls how the datatable renders and performs:
+
+```javascript
+renderConfig = {
+   virtualize: 'vertical',
+};
+```
+
+### Virtualization
+
+<ParamField path="virtualize" type="string">
+  Enables virtual scrolling for improved performance with large datasets
+</ParamField>
+
+**Options:**
+- `vertical`: Only rows in the viewport are rendered
+- `horizontal`: Only visible columns are rendered
+- `both`: Both rows and columns are virtualized
+
+<Info>
+Virtual scrolling significantly improves performance when displaying hundreds or thousands of records by only rendering visible DOM elements.
+</Info>
+
+### Example Configurations
+
+<CodeGroup>
+```javascript Vertical Scrolling (Current)
+renderConfig = {
+   virtualize: 'vertical',
+};
+```
+
+```javascript Both Directions
+renderConfig = {
+   virtualize: 'both',
+};
+```
+
+```javascript No Virtualization
+renderConfig = {};
+```
+</CodeGroup>
+
+## Datatable Properties
+
+The component configures the `lightning-datatable` with the following properties:
+
+### Core Properties
+
+```html
+<lightning-datatable 
+   key-field="Id" 
+   render-mode="role-based"
+   render-config={renderConfig}
+   data={tableData} 
+   selected-rows={preSelectedRows}
+   show-row-number-column 
+   hide-checkbox-column={hiddenCheckBox}
+   columns={columns} 
+   onrowaction={handleRowAction}
+   onrowselection={handleRowSelectionTable}>
+</lightning-datatable>
+```
+
+### Property Reference
+
+<ResponseField name="key-field" type="string" default="Id">
+  Unique identifier field for each row. Must be unique across all records.
+</ResponseField>
+
+<ResponseField name="render-mode" type="string" default="role-based">
+  Determines the accessibility mode:
+  - `role-based`: Uses ARIA roles for screen readers
+  - `auto`: Automatically selects best mode
+</ResponseField>
+
+<ResponseField name="data" type="Array" required>
+  The array of records to display. Bound to `tableData` property.
+</ResponseField>
+
+<ResponseField name="columns" type="Array" required>
+  Array of column configuration objects.
+</ResponseField>
+
+<ResponseField name="selected-rows" type="Array">
+  Array of row IDs to pre-select. Bound to `preSelectedRows`.
+</ResponseField>
+
+<ResponseField name="show-row-number-column" type="boolean" default="false">
+  When true, displays row numbers in the first column.
+</ResponseField>
+
+<ResponseField name="hide-checkbox-column" type="boolean" default="false">
+  Dynamically controls checkbox visibility. Set to `true` in "Selected" view mode.
+</ResponseField>
+
+## Filter Configuration
+
+The component provides a combobox for selecting which field to filter by:
+
+### Filter Options
+
+```javascript
+get options() {
+   return [
+      { label: 'None', value: '' },
+      { label: 'Name', value: 'Name' },
+      { label: 'StageName', value: 'StageName' },
+   ];
+}
+```
+
+### Filter Combobox
+
+```html
+<lightning-combobox
+   data-filter="filter"
+   name="filter"
+   variant="label-hidden"
+   value={valueFilter}
+   placeholder="--Select the filter value--"
+   options={options}
+   onchange={handleChangeFilter}
+></lightning-combobox>
+```
+
+<Note>
+The filter uses a LIKE query in Apex, enabling partial string matching. The search is case-insensitive and supports wildcards.
+</Note>
+
+## Customizing Component Behavior
+
+### Disable Filter-Dependent Search
+
+The search input is disabled until a filter field is selected:
+
+```javascript
+get selectedFilterValue() {
+   return this.valueFilter.trim() === "";
+}
+```
+
+```html
+<lightning-input 
+   data-filter="search"
+   disabled={selectedFilterValue}
+   type="search" 
+   variant="label-hidden" 
+   name="search" 
+   onchange={handleChangeFilter}
+   placeholder="Search here..."
+></lightning-input>
+```
+
+### Dynamic Button Labels
+
+Button labels display record counts:
+
+```javascript
+get getAllRecord() {
+   return `Records (${this.lengthTableData})`;
+}
+
+get getSelectedRecords() {
+   return `Selected (${this.selectedRecords.length})`;
+}
+```
+
+### Warning for Empty Selection
+
+A warning appears when attempting to view selected records with none selected:
+
+```javascript
+handleClickSelected() {
+   if (this.selectedRecords.length === 0) {
+      this.existingRecord = false;
+   }
+   this.isSelected = true;
+   this.hiddenCheckBox = true;
+   this.tableData = this.selectedRecords;
+}
+```
+
+## Performance Optimization
+
+### Cacheable Wire Service
+
+The wire adapter uses `cacheable=true` for improved performance:
+
+```apex
+@AuraEnabled(cacheable=true)
+public static List<Opportunity> getAllOpportunity(String params, String filterField) {
+    // ...
+}
+```
+
+<Tip>
+Cacheable methods reduce server round trips by storing results in the Lightning Data Service cache.
+</Tip>
+
+### Virtual Scrolling
+
+The `renderConfig` with `virtualize: 'vertical'` ensures only visible rows are rendered in the DOM:
+
+```javascript
+renderConfig = {
+   virtualize: 'vertical',
+};
+```
+
+### Imperative vs Wire for Filtering
+
+The component uses two data fetching strategies:
+
+1. **Wire Service** (Initial Load):
+   ```javascript
+   @wire(getAllOpportunity, { params: '', filterField: '' })
+   ```
+
+2. **Imperative Apex** (Filtering):
+   ```javascript
+   filterRecordsTable() {
+      getAllOpportunity({ params: this.valueSearch, filterField: this.valueFilter })
+         .then(result => {
+            this.tableData = result;
+            this.lengthTableData = this.tableData.length;
+         }).catch(error => console.log(error))
+   }
+   ```
+
+<Warning>
+Using imperative Apex for filtering bypasses the cache, ensuring fresh filtered results but increasing server load.
+</Warning>
+
+## Metadata Configuration
+
+The component's deployment settings are defined in `operationDatatable.js-meta.xml`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>55.0</apiVersion>
+    <isExposed>true</isExposed>
+    <masterLabel>Table Component Custom</masterLabel>
+    <targets>
+        <target>lightning__AppPage</target>
+        <target>lightning__RecordPage</target>
+        <target>lightning__HomePage</target>
+    </targets>
+</LightningComponentBundle>
+```
+
+### Metadata Properties
+
+<ResponseField name="apiVersion" type="number" required>
+  Salesforce API version. Set to 55.0.
+</ResponseField>
+
+<ResponseField name="isExposed" type="boolean" required>
+  When `true`, the component is available in Lightning App Builder.
+</ResponseField>
+
+<ResponseField name="masterLabel" type="string" required>
+  Display name shown in Lightning App Builder.
+</ResponseField>
+
+<ResponseField name="targets" type="Array" required>
+  Specifies where the component can be added (App Pages, Record Pages, Home Pages).
+</ResponseField>

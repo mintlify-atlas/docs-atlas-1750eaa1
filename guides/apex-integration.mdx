@@ -1,0 +1,240 @@
+---
+title: Apex Integration
+description: Learn how the LWC integrates with Apex for data retrieval, including wire service and imperative calls
+---
+
+## Overview
+
+The Action List Opportunity component integrates with Salesforce Apex using both the `@wire` decorator for automatic data loading and imperative calls for dynamic filtering. This guide covers the complete data flow between the Lightning Web Component and the Apex controller.
+
+## Apex Controller
+
+The `OpportunityController` class provides a single method for retrieving Opportunity records:
+
+```apex OpportunityController.cls
+public with sharing class OpportunityController {
+
+    @AuraEnabled(cacheable=true)
+    public static List<Opportunity> getAllOpportunity(String params, String filterField) {
+        String query = 'SELECT Id, Name, StageName, CreatedDate, LeadSource FROM Opportunity';
+        if(!String.isBlank(params) && !String.isBlank(filterField)){
+            String searchString = '\'%' + params + '%\'';
+            query = query + ' WHERE ' + filterField + ' LIKE ' + searchString;
+        }
+        System.debug('query: ' + query);
+        return Database.query(query);
+    }
+}
+```
+
+### Method Signature
+
+- **@AuraEnabled(cacheable=true)**: Enables Lightning Data Service caching for improved performance
+- **params**: The search term to filter by
+- **filterField**: The field name to apply the filter on
+- **Returns**: List of Opportunity records matching the criteria
+
+<Info>
+The `cacheable=true` parameter is required for `@wire` decorator usage and enables client-side caching.
+</Info>
+
+### Dynamic SOQL Query
+
+The method builds a dynamic SOQL query:
+
+1. **Base query**: Retrieves Id, Name, StageName, CreatedDate, and LeadSource fields
+2. **Conditional WHERE clause**: Only added when both parameters are provided
+3. **LIKE operator**: Uses wildcards for partial string matching (`%searchTerm%`)
+4. **Dynamic field**: The field name is injected directly into the query
+
+<Warning>
+**Security consideration**: This implementation assumes trusted input. In production, validate the `filterField` parameter against a whitelist to prevent SOQL injection.
+</Warning>
+
+## Wire Service Integration
+
+The component imports and wires the Apex method for automatic data loading:
+
+### Import Statement
+
+```javascript operationDatatable.js:2
+import getAllOpportunity from '@salesforce/apex/OpportunityController.getAllOpportunity';
+```
+
+### Wire Decorator
+
+The `@wire` decorator automatically invokes the Apex method when the component loads:
+
+```javascript operationDatatable.js:33-43
+@wire(getAllOpportunity, { params: '', filterField: '' })
+getAllOpportunityWire({ data, error }) {
+   if (data) {
+      this.data = data;
+      this.tableData = this.data;
+      this.lengthTableData = this.tableData.length;
+      this.showSpinner = false;
+   } else if (error) {
+      console.log(error);
+   }
+}
+```
+
+**How it works:**
+
+<Steps>
+  <Step title="Automatic Invocation">
+    The wire service calls `getAllOpportunity` automatically when the component initializes
+  </Step>
+  <Step title="Parameter Binding">
+    Passes empty strings for `params` and `filterField`, which returns all Opportunities
+  </Step>
+  <Step title="Data Handling">
+    When data arrives, it populates both `data` (master copy) and `tableData` (display copy)
+  </Step>
+  <Step title="UI Update">
+    Hides the spinner and updates the record count
+  </Step>
+</Steps>
+
+<Note>
+The wire service automatically handles reactivity. If the parameters were reactive properties, changes would trigger automatic re-execution.
+</Note>
+
+## Imperative Apex Calls
+
+For dynamic filtering, the component uses imperative calls to the same Apex method:
+
+```javascript operationDatatable.js:76-82
+filterRecordsTable() {
+   getAllOpportunity({ params: this.valueSearch, filterField: this.valueFilter })
+      .then(result => {
+         this.tableData = result;
+         this.lengthTableData = this.tableData.length;
+      }).catch(error => console.log(error))
+}
+```
+
+### Imperative vs Wire
+
+<CardGroup cols={2}>
+  <Card title="@wire Service" icon="bolt">
+    - Automatic invocation on load
+    - Caching built-in
+    - Reactive to parameter changes
+    - Used for initial data load
+  </Card>
+  <Card title="Imperative Calls" icon="hand-pointer">
+    - Manual invocation
+    - Returns a promise
+    - Full control over timing
+    - Used for user-triggered filtering
+  </Card>
+</CardGroup>
+
+## Data Flow Architecture
+
+```mermaid
+graph TD
+    A[Component Loads] --> B[@wire Service]
+    B --> C[getAllOpportunity params='', filterField='']
+    C --> D[All Opportunities Returned]
+    D --> E[data & tableData populated]
+    
+    F[User Filters] --> G[filterRecordsTable]
+    G --> H[Imperative getAllOpportunity]
+    H --> I[Filtered Opportunities]
+    I --> J[tableData updated]
+```
+
+## Error Handling
+
+### Wire Service Errors
+
+```javascript
+else if (error) {
+   console.log(error);
+}
+```
+
+The wire adapter handles errors by logging them to the console. In production, consider:
+- Displaying user-friendly error messages
+- Using the `reducedErrors` utility
+- Implementing retry logic
+
+### Imperative Call Errors
+
+```javascript
+.catch(error => console.log(error))
+```
+
+Imperative calls catch errors in the promise chain. Consider enhancing this with:
+
+```javascript
+.catch(error => {
+   this.showSpinner = false;
+   this.error = error;
+   // Display toast notification
+})
+```
+
+## Refresh Functionality
+
+The component includes a refresh handler:
+
+```javascript operationDatatable.js:128-130
+handleRefreshTable() {
+   refreshApex(this.tableData);
+}
+```
+
+<Warning>
+**Bug alert**: This implementation is incorrect. `refreshApex` requires the wired result object, not the data array. It should be:
+
+```javascript
+handleRefreshTable() {
+   return refreshApex(this.wiredOpportunityResult);
+}
+```
+
+And the wire decorator should store the result:
+
+```javascript
+wiredOpportunityResult;
+
+@wire(getAllOpportunity, { params: '', filterField: '' })
+getAllOpportunityWire(result) {
+   this.wiredOpportunityResult = result;
+   const { data, error } = result;
+   if (data) {
+      // ... handle data
+   }
+}
+```
+</Warning>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use @wire for initial data load">
+    The wire service provides automatic caching and reactivity, making it ideal for initial data loading.
+  </Accordion>
+  <Accordion title="Use imperative calls for user actions">
+    When users trigger filtering or searching, imperative calls give you precise control over when data is fetched.
+  </Accordion>
+  <Accordion title="Implement proper error handling">
+    Both wire adapters and imperative calls need robust error handling with user-friendly messages.
+  </Accordion>
+  <Accordion title="Cache strategically">
+    The `cacheable=true` parameter enables Lightning Data Service caching, but be aware of cache invalidation patterns.
+  </Accordion>
+</AccordionGroup>
+
+## Testing Considerations
+
+<Tip>
+When testing Apex integration:
+- Mock the `@wire` adapter using `@salesforce/sfdx-lwc-jest`
+- Test both success and error scenarios
+- Verify that imperative calls handle loading states correctly
+- Test SOQL query generation with various parameter combinations
+</Tip>

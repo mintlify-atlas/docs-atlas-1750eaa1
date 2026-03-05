@@ -1,0 +1,127 @@
+---
+title: Introduction
+description: A powerful Lightning Web Component for managing and filtering Opportunity records with an interactive datatable interface
+---
+
+## Overview
+
+Action List Opportunity is a Salesforce Lightning Web Component that provides an advanced, user-friendly interface for viewing, filtering, and managing Opportunity records. Built with modern LWC standards and Salesforce Lightning Design System (SLDS), it offers a streamlined experience for working with large datasets of opportunities.
+
+<Note>
+  This component leverages Salesforce API version 55.0 and is compatible with Lightning App Pages, Record Pages, and Home Pages.
+</Note>
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Dynamic Filtering" icon="filter">
+    Filter opportunities by Name or StageName with real-time search capabilities
+  </Card>
+  
+  <Card title="Multi-Select Records" icon="check-square">
+    Select multiple opportunity records and toggle between all records and selected records view
+  </Card>
+  
+  <Card title="Interactive Datatable" icon="table">
+    Virtualized datatable with row selection, row numbering, and responsive design
+  </Card>
+  
+  <Card title="Server-Side Search" icon="magnifying-glass">
+    Efficient SOQL-based filtering through Apex controller for optimal performance
+  </Card>
+</CardGroup>
+
+## What's Included
+
+The component consists of two main parts:
+
+### Lightning Web Component
+- **operationDatatable**: The main LWC that handles UI rendering, user interactions, and state management
+- Displays Opportunity fields: Name, StageName, CreatedDate, and LeadSource
+- Real-time filtering and search functionality
+- Row selection with checkbox support
+
+### Apex Controller
+- **OpportunityController**: Server-side controller with cacheable methods
+- Dynamic SOQL query generation based on filter criteria
+- Optimized for performance with `@AuraEnabled(cacheable=true)`
+
+## Use Cases
+
+### For Salesforce Admins
+- **Quick Opportunity Review**: Add to home pages for instant access to opportunity data
+- **Filtered Dashboards**: Create focused views of opportunities by stage or source
+- **Record Management**: Enable users to quickly identify and select relevant opportunities
+
+### For Developers
+- **Customizable Foundation**: Extend the component with additional fields and filters
+- **Integration Ready**: Use selected records for bulk operations or downstream processes
+- **Pattern Reference**: Learn LWC best practices including wire adapters, imperative calls, and state management
+
+## Technical Highlights
+
+```javascript
+@wire(getAllOpportunity, { params: '', filterField: '' })
+getAllOpportunityWire({ data, error }) {
+   if (data) {
+      this.data = data;
+      this.tableData = this.data;
+      this.lengthTableData = this.tableData.length;
+      this.showSpinner = false;
+   }
+}
+```
+
+The component uses:
+- **@wire decorator** for automatic data refresh and caching
+- **refreshApex** for manual data refresh capabilities
+- **Virtual scrolling** for handling large datasets efficiently
+- **Client-side and server-side filtering** for optimal performance
+
+## Component Architecture
+
+The component follows Salesforce best practices:
+
+1. **Separation of Concerns**: UI logic in LWC, data access in Apex
+2. **Security**: Uses `with sharing` keyword for record-level security
+3. **Performance**: Cacheable Apex methods and virtualized rendering
+4. **Accessibility**: Built with SLDS for screen reader support
+
+<Tip>
+  The component is configured to be exposed on App Pages, Record Pages, and Home Pages, making it versatile for various Lightning Experience contexts.
+</Tip>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Deploy the component to your Salesforce org
+  </Card>
+  
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get up and running in 5 minutes
+  </Card>
+</CardGroup>
+
+## Component Capabilities
+
+### Filtering Options
+- Filter by **Name**: Search opportunities by name
+- Filter by **StageName**: Find opportunities in specific stages
+- **Dynamic Search**: Real-time filtering as you type
+
+### Display Features
+- **Row Numbers**: Automatically numbered rows for easy reference
+- **Date Formatting**: CreatedDate displayed in user's locale format
+- **Record Count**: Dynamic display of total and selected record counts
+- **Loading States**: Spinner indication during data fetch operations
+
+### User Interactions
+- **Row Selection**: Multi-select with checkboxes
+- **View Switching**: Toggle between all records and selected records
+- **Validation Alerts**: Warning when trying to view selected records with none selected
+- **Persistent Selection**: Selected rows remain highlighted when switching views
+
+<Warning>
+  The component requires read access to Opportunity object. Ensure users have appropriate permissions before deployment.
+</Warning>

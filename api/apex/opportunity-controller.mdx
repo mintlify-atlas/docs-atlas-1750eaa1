@@ -1,0 +1,322 @@
+---
+title: 'OpportunityController'
+description: 'Apex controller for retrieving and filtering Opportunity records'
+---
+
+## Overview
+
+The `OpportunityController` class is a server-side Apex controller that provides data access methods for the Action List Opportunity Lightning Web Component. It implements the `with sharing` keyword to enforce record-level security and field-level security (FLS) based on the current user's permissions.
+
+### Key Features
+
+- **@AuraEnabled Methods**: Exposes Apex methods to Lightning Web Components
+- **Cacheable**: Optimizes performance with Lightning Data Service caching
+- **Dynamic SOQL**: Constructs queries based on runtime filter parameters
+- **Sharing Rules**: Enforces `with sharing` for secure data access
+
+## Class Definition
+
+```apex
+public with sharing class OpportunityController {
+    // Methods documented below
+}
+```
+
+The `with sharing` keyword ensures that the controller respects the sharing rules and permissions of the running user, preventing unauthorized access to Opportunity records.
+
+---
+
+## Methods
+
+### getAllOpportunity
+
+Retrieves a list of Opportunity records with optional filtering based on a specific field and search parameter.
+
+```apex
+@AuraEnabled(cacheable=true)
+public static List<Opportunity> getAllOpportunity(String params, String filterField)
+```
+
+#### Parameters
+
+<ParamField path="params" type="String">
+  The search value to filter records. Supports partial matching using SOQL LIKE operator with wildcard characters. Pass an empty string or null to retrieve all records without filtering.
+</ParamField>
+
+<ParamField path="filterField" type="String">
+  The API name of the Opportunity field to filter on (e.g., 'Name', 'StageName', 'LeadSource'). Must be a valid field from the SELECT clause. Pass an empty string or null to skip filtering.
+</ParamField>
+
+#### Return Value
+
+<ResponseField name="List<Opportunity>" type="List<Opportunity>">
+  Returns a list of Opportunity records containing the following fields:
+  - **Id**: Unique record identifier
+  - **Name**: Opportunity name
+  - **StageName**: Current sales stage
+  - **CreatedDate**: Record creation timestamp
+  - **LeadSource**: Source of the opportunity lead
+  
+  Returns an empty list if no records match the filter criteria.
+</ResponseField>
+
+#### Implementation Details
+
+The method constructs a dynamic SOQL query with the following logic:
+
+1. **Base Query**: Selects Id, Name, StageName, CreatedDate, and LeadSource from all Opportunities
+2. **Conditional Filtering**: If both `params` and `filterField` are provided (non-blank), adds a WHERE clause with LIKE operator
+3. **Wildcard Matching**: Wraps the search parameter with `%` wildcards for partial matching
+4. **Dynamic Execution**: Uses `Database.query()` to execute the dynamically constructed query string
+
+```apex
+@AuraEnabled(cacheable=true)
+public static List<Opportunity> getAllOpportunity(String params, String filterField) {
+    String query = 'SELECT Id, Name, StageName, CreatedDate, LeadSource FROM Opportunity';
+    if(!String.isBlank(params) && !String.isBlank(filterField)){
+        String searchString = '\'%' + params + '%\'';
+        query = query + ' WHERE ' + filterField + ' LIKE ' + searchString;
+    }
+    System.debug('query: ' + query);
+    return Database.query(query);
+}
+```
+
+#### Cacheable Annotation
+
+The `@AuraEnabled(cacheable=true)` annotation enables Lightning Data Service (LDS) caching:
+
+- **Performance**: Results are cached on the client side, reducing server round-trips
+- **Automatic Refresh**: LDS automatically refreshes cached data when related records change
+- **Required for @wire**: Must be cacheable to use with the `@wire` decorator in LWC
+- **Limitations**: Parameters must be primitive types or lists of primitives; method must be read-only
+
+---
+
+## Usage Example
+
+### Wire Adapter Pattern
+
+Use the `@wire` decorator to reactively fetch data and bind it to component properties:
+
+```javascript
+import { LightningElement, wire } from 'lwc';
+import getAllOpportunity from '@salesforce/apex/OpportunityController.getAllOpportunity';
+
+export default class OpportunityList extends LightningElement {
+    opportunities = [];
+
+    @wire(getAllOpportunity, { params: '', filterField: '' })
+    wiredOpportunities({ data, error }) {
+        if (data) {
+            this.opportunities = data;
+        } else if (error) {
+            console.error('Error fetching opportunities:', error);
+        }
+    }
+}
+```
+
+### Imperative Call Pattern
+
+Use imperative calls when you need to trigger data fetching based on user actions:
+
+```javascript
+import { LightningElement } from 'lwc';
+import getAllOpportunity from '@salesforce/apex/OpportunityController.getAllOpportunity';
+
+export default class OpportunityFilter extends LightningElement {
+    opportunities = [];
+    searchValue = '';
+    filterField = 'Name';
+
+    handleSearch() {
+        getAllOpportunity({ 
+            params: this.searchValue, 
+            filterField: this.filterField 
+        })
+        .then(result => {
+            this.opportunities = result;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    }
+}
+```
+
+### Filtering Examples
+
+```javascript
+// Filter by Name containing "Acme"
+getAllOpportunity({ params: 'Acme', filterField: 'Name' })
+
+// Filter by StageName containing "Closed"
+getAllOpportunity({ params: 'Closed', filterField: 'StageName' })
+
+// Get all opportunities (no filter)
+getAllOpportunity({ params: '', filterField: '' })
+
+// Partial match - finds "Qualification", "Qualified", etc.
+getAllOpportunity({ params: 'Qual', filterField: 'StageName' })
+```
+
+---
+
+## Security Considerations
+
+### Sharing Rules
+
+The class uses `with sharing` to enforce:
+- Organization-Wide Defaults (OWD)
+- Role hierarchy
+- Sharing rules
+- Manual sharing
+- Team access
+
+### Field-Level Security
+
+While the query respects object-level permissions through sharing rules, consider adding explicit FLS checks for production use:
+
+```apex
+// Example: Check field accessibility before querying
+if (!Schema.sObjectType.Opportunity.fields.Name.isAccessible() ||
+    !Schema.sObjectType.Opportunity.fields.StageName.isAccessible()) {
+    throw new AuraHandledException('Insufficient permissions to access Opportunity fields');
+}
+```
+
+### SOQL Injection Prevention
+
+<Warning>
+The current implementation is **vulnerable to SOQL injection** because it uses dynamic field names without validation.
+</Warning>
+
+**Recommended Enhancement**: Validate the `filterField` parameter against a whitelist:
+
+```apex
+private static final Set<String> ALLOWED_FIELDS = new Set<String>{
+    'Name', 'StageName', 'LeadSource'
+};
+
+public static List<Opportunity> getAllOpportunity(String params, String filterField) {
+    String query = 'SELECT Id, Name, StageName, CreatedDate, LeadSource FROM Opportunity';
+    
+    if(!String.isBlank(params) && !String.isBlank(filterField)){
+        // Validate field name to prevent SOQL injection
+        if (!ALLOWED_FIELDS.contains(filterField)) {
+            throw new AuraHandledException('Invalid filter field: ' + filterField);
+        }
+        
+        String searchString = '\'%' + String.escapeSingleQuotes(params) + '%\'';
+        query = query + ' WHERE ' + filterField + ' LIKE ' + searchString;
+    }
+    
+    return Database.query(query);
+}
+```
+
+---
+
+## Error Handling
+
+### Common Errors
+
+<AccordionGroup>
+  <Accordion title="QueryException - Invalid field name">
+    Occurs when `filterField` contains an invalid or inaccessible field name.
+    
+    **Solution**: Validate field names against a whitelist before constructing the query.
+  </Accordion>
+  
+  <Accordion title="AuraHandledException - Generic error">
+    Generic exception that can be thrown and caught in LWC components.
+    
+    **Handling in LWC**:
+    ```javascript
+    .catch(error => {
+        const errorMessage = error.body?.message || 'Unknown error';
+        // Display error to user
+    })
+    ```
+  </Accordion>
+  
+  <Accordion title="System.LimitException - Query exceeds governor limits">
+    Occurs when the query returns more than 50,000 rows.
+    
+    **Solution**: Add LIMIT clause or implement pagination for large datasets.
+  </Accordion>
+</AccordionGroup>
+
+### Best Practices
+
+1. **Wrap imperative calls in try-catch blocks** in your LWC JavaScript
+2. **Use `reduceErrors` utility** to parse Apex errors consistently
+3. **Display user-friendly error messages** instead of technical stack traces
+4. **Log errors for debugging** while showing simplified messages to users
+
+---
+
+## Testing Recommendations
+
+Create comprehensive test coverage for the controller:
+
+```apex
+@isTest
+private class OpportunityControllerTest {
+    
+    @testSetup
+    static void setup() {
+        // Create test opportunities
+        List<Opportunity> testOpps = new List<Opportunity>();
+        for(Integer i = 0; i < 5; i++) {
+            testOpps.add(new Opportunity(
+                Name = 'Test Opp ' + i,
+                StageName = 'Prospecting',
+                CloseDate = Date.today().addDays(30)
+            ));
+        }
+        insert testOpps;
+    }
+    
+    @isTest
+    static void testGetAllOpportunityNoFilter() {
+        Test.startTest();
+        List<Opportunity> results = OpportunityController.getAllOpportunity('', '');
+        Test.stopTest();
+        
+        Assert.areEqual(5, results.size(), 'Should return all opportunities');
+    }
+    
+    @isTest
+    static void testGetAllOpportunityWithFilter() {
+        Test.startTest();
+        List<Opportunity> results = OpportunityController.getAllOpportunity('Test Opp 1', 'Name');
+        Test.stopTest();
+        
+        Assert.areEqual(1, results.size(), 'Should return filtered opportunity');
+    }
+    
+    @isTest
+    static void testGetAllOpportunityPartialMatch() {
+        Test.startTest();
+        List<Opportunity> results = OpportunityController.getAllOpportunity('Test', 'Name');
+        Test.stopTest();
+        
+        Assert.areEqual(5, results.size(), 'Should return all matching opportunities');
+    }
+}
+```
+
+---
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="LWC Integration" icon="bolt" href="/components/operation-datatable">
+    Learn how operationDatatable component uses this controller
+  </Card>
+  <Card title="Apex Developer Guide" icon="book" href="https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/">
+    Official Salesforce Apex documentation
+  </Card>
+</CardGroup>

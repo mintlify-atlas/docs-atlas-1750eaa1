@@ -1,0 +1,340 @@
+---
+title: 'Events'
+description: 'Component event handlers and event data structures'
+---
+
+## Datatable Events
+
+### onrowselection
+
+Fired when rows are selected or deselected in the lightning-datatable component.
+
+**Handler:**
+```javascript
+handleRowSelectionTable(e)
+```
+
+**Event Detail Structure:**
+<ResponseField name="e.detail.selectedRows" type="Array">
+  Array of complete record objects for all currently selected rows.
+  
+  Each object contains all fields defined in the Opportunity records (Id, Name, StageName, CreatedDate, LeadSource, etc.).
+</ResponseField>
+
+**Usage in Template:**
+```html
+<lightning-datatable
+  onrowselection={handleRowSelectionTable}
+  data={tableData}
+  columns={columns}
+  ...>
+</lightning-datatable>
+```
+
+**Event Flow:**
+1. User selects/deselects rows in the datatable
+2. `onrowselection` event fires with updated selection
+3. Handler extracts `e.detail.selectedRows` array
+4. Selected records are deep cloned and stored in `selectedRecords` property
+5. Update only occurs when checkboxes are visible (`!hiddenCheckBox`)
+
+**Example Handler Implementation:**
+```javascript
+handleRowSelectionTable(e) {
+  const selectedRows = JSON.parse(JSON.stringify(e.detail.selectedRows));
+  if (!this.hiddenCheckBox) {
+    this.selectedRecords = selectedRows;
+  }
+}
+```
+
+---
+
+## Filter and Search Events
+
+### onchange (Combobox)
+
+Fired when the filter field combobox value changes.
+
+**Handler:**
+```javascript
+handleChangeFilter(e)
+```
+
+**Event Detail Structure:**
+<ResponseField name="e.detail.value" type="String">
+  Selected value from the combobox options.
+  
+  One of: `''` (None), `'Name'`, `'StageName'`
+</ResponseField>
+
+<ResponseField name="e.target.dataset.filter" type="String">
+  Custom data attribute identifying the action type.
+  
+  Value: `'filter'`
+</ResponseField>
+
+**Usage in Template:**
+```html
+<lightning-combobox
+  data-filter="filter"
+  onchange={handleChangeFilter}
+  options={options}
+  value={valueFilter}>
+</lightning-combobox>
+```
+
+**Event Flow:**
+1. User selects a filter field from the combobox
+2. `onchange` event fires with selected value
+3. Handler checks `data-filter` attribute to identify action as "filter"
+4. Updates `valueFilter` property with `e.detail.value`
+5. Triggers filtering logic if search text exists
+
+---
+
+### onchange (Search Input)
+
+Fired when the search input field value changes.
+
+**Handler:**
+```javascript
+handleChangeFilter(e)
+```
+
+**Event Detail Structure:**
+<ResponseField name="e.target.value" type="String">
+  Current text value from the input field.
+</ResponseField>
+
+<ResponseField name="e.target.dataset.filter" type="String">
+  Custom data attribute identifying the action type.
+  
+  Value: `'search'`
+</ResponseField>
+
+**Usage in Template:**
+```html
+<lightning-input
+  data-filter="search"
+  onchange={handleChangeFilter}
+  type="text"
+  value={valueSearch}>
+</lightning-input>
+```
+
+**Event Flow:**
+1. User types in the search input field
+2. `onchange` event fires on blur or Enter key
+3. Handler checks `data-filter` attribute to identify action as "search"
+4. Updates `valueSearch` property with trimmed `e.target.value`
+5. Applies appropriate filtering:
+   - Server-side filtering for "All Records" view (if filter field selected)
+   - Client-side filtering for "Selected Records" view
+   - Resets to full dataset if search is cleared
+
+**Combined Handler Implementation:**
+```javascript
+handleChangeFilter(e) {
+  const action = e.target.dataset.filter;
+  if (action === "filter") {
+    this.valueFilter = e.detail.value;
+  }
+  if (action === "search") {
+    this.valueSearch = e.target.value.trim();
+  }
+  if (!this.isSelected) {
+    if (this.valueFilter.trim() !== "" && this.valueSearch.trim() !== "") {
+      this.filterRecordsTable();
+    } else if (this.valueSearch.trim() === "") {
+      this.tableData = this.data
+    }
+    this.lengthTableData = this.tableData.length;
+  } else {
+    this.filterTableDataSelected();
+  }
+}
+```
+
+---
+
+## Button Click Events
+
+### onclick (Selected View)
+
+Fired when the "Selected" button is clicked to view only selected records.
+
+**Handler:**
+```javascript
+handleClickSelected()
+```
+
+**Event Detail Structure:**
+No event detail used (button click event).
+
+**Usage in Template:**
+```html
+<lightning-button
+  label="Selected"
+  onclick={handleClickSelected}>
+</lightning-button>
+```
+
+**Event Flow:**
+1. User clicks the "Selected" button
+2. Handler validates that records are selected
+3. Sets `existingRecord = false` if no selections (triggers error state)
+4. Switches to selected view mode (`isSelected = true`)
+5. Hides checkboxes (`hiddenCheckBox = true`)
+6. Updates table to display only `selectedRecords`
+
+**Handler Implementation:**
+```javascript
+handleClickSelected() {
+  if (this.selectedRecords.length === 0) {
+    this.existingRecord = false;
+  }
+  this.isSelected = true;
+  this.hiddenCheckBox = true;
+  this.tableData = this.selectedRecords;
+}
+```
+
+---
+
+### onclick (All Records View)
+
+Fired when the "All Records" button is clicked to return to full dataset view.
+
+**Handler:**
+```javascript
+handleClickAllData()
+```
+
+**Event Detail Structure:**
+No event detail used (button click event).
+
+**Usage in Template:**
+```html
+<lightning-button
+  label="All Records"
+  onclick={handleClickAllData}>
+</lightning-button>
+```
+
+**Event Flow:**
+1. User clicks the "All Records" button
+2. Handler resets error state (`existingRecord = true`)
+3. Switches to all records mode (`isSelected = false`)
+4. Shows checkboxes (`hiddenCheckBox = false`)
+5. Builds `preSelectedRows` array with IDs of currently selected records
+6. Restores full dataset to table (`tableData = this.data`)
+7. Datatable automatically pre-selects rows matching `preSelectedRows`
+
+**Handler Implementation:**
+```javascript
+handleClickAllData() {
+  this.existingRecord = true;
+  this.isSelected = false;
+  let preSelectedRowsId = [];
+  this.hiddenCheckBox = false;
+  this.selectedRecords.forEach(items => {
+    preSelectedRowsId.push(items.Id);
+  });
+  this.tableData = this.data;
+  this.preSelectedRows = preSelectedRowsId;
+}
+```
+
+---
+
+### onclick (Refresh)
+
+Fired when the refresh button is clicked to reload data from the server.
+
+**Handler:**
+```javascript
+handleRefreshTable()
+```
+
+**Event Detail Structure:**
+No event detail used (button click event).
+
+**Usage in Template:**
+```html
+<lightning-button-icon
+  icon-name="utility:refresh"
+  onclick={handleRefreshTable}>
+</lightning-button-icon>
+```
+
+**Event Flow:**
+1. User clicks the refresh button/icon
+2. Handler calls `refreshApex()` to re-invoke the wire service
+3. Wire adapter re-fetches data from server
+4. `getAllOpportunityWire()` method processes the refreshed data
+5. Table updates with latest records
+
+**Handler Implementation:**
+```javascript
+handleRefreshTable() {
+  refreshApex(this.tableData);
+}
+```
+
+---
+
+## Event Handler Patterns
+
+### Using data-* Attributes for Action Routing
+
+The component uses the `data-filter` custom attribute to route different UI element events to a single handler:
+
+```html
+<!-- Filter field selection -->
+<lightning-combobox data-filter="filter" onchange={handleChangeFilter}>
+</lightning-combobox>
+
+<!-- Search input -->
+<lightning-input data-filter="search" onchange={handleChangeFilter}>
+</lightning-input>
+```
+
+The handler determines the action based on `e.target.dataset.filter`:
+
+```javascript
+const action = e.target.dataset.filter;
+if (action === "filter") {
+  // Handle filter field change
+}
+if (action === "search") {
+  // Handle search text change
+}
+```
+
+### Deep Cloning Selected Rows
+
+To prevent reactivity issues with complex objects, the component deep clones selected rows:
+
+```javascript
+const selectedRows = JSON.parse(JSON.stringify(e.detail.selectedRows));
+```
+
+This ensures that modifications to `selectedRecords` don't affect the original `data` array.
+
+### Conditional Event Processing
+
+Event handlers check component state to determine behavior:
+
+```javascript
+if (!this.hiddenCheckBox) {
+  // Only update selections when checkboxes are visible
+  this.selectedRecords = selectedRows;
+}
+
+if (!this.isSelected) {
+  // Server-side filtering for all records
+} else {
+  // Client-side filtering for selected records
+}
+```

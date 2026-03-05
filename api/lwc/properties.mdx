@@ -1,0 +1,205 @@
+---
+title: 'Properties'
+description: 'Component properties and tracked state variables'
+---
+
+## Data Properties
+
+<ParamField path="data" type="Array" default="[]">
+  Master dataset containing all Opportunity records fetched from Apex.
+  
+  Populated by the `@wire(getAllOpportunity)` service and serves as the source of truth for all table operations.
+  
+  ```javascript
+  data = [];
+  ```
+</ParamField>
+
+<ParamField path="tableData" type="Array" default="[]">
+  Active dataset displayed in the datatable component.
+  
+  This array is dynamically filtered and updated based on user interactions (filter, search, selection views). Initially populated from `data`.
+  
+  ```javascript
+  tableData = [];
+  ```
+</ParamField>
+
+<ParamField path="columns" type="Array" default="columns constant">
+  Column configuration for the lightning-datatable.
+  
+  Defines the structure, labels, field names, and types for each column in the table.
+  
+  ```javascript
+  columns = [
+    { label: 'Name', fieldName: 'Name' },
+    { label: 'StageName', fieldName: 'StageName' },
+    { label: 'CreatedDate', fieldName: 'CreatedDate', type: 'date' },
+    { label: 'LeadSource', fieldName: 'LeadSource' },
+  ];
+  ```
+</ParamField>
+
+<ParamField path="lengthTableData" type="Number" default="0">
+  Count of records currently displayed in the table.
+  
+  Updated whenever `tableData` changes, used for displaying record counts in the UI.
+  
+  ```javascript
+  lengthTableData = 0;
+  ```
+</ParamField>
+
+## Rendering Configuration
+
+<ParamField path="renderConfig" type="Object" default="{ virtualize: 'vertical' }">
+  Configuration object for datatable rendering optimization.
+  
+  Enables vertical virtualization to improve performance with large datasets.
+  
+  ```javascript
+  renderConfig = {
+    virtualize: 'vertical',
+  };
+  ```
+</ParamField>
+
+## Filter and Search Properties
+
+<ParamField path="valueFilter" type="String" default="''">
+  Selected field name for filtering operations.
+  
+  Stores the current filter field (e.g., 'Name', 'StageName') selected from the combobox.
+  
+  ```javascript
+  valueFilter = '';
+  ```
+</ParamField>
+
+<ParamField path="valueSearch" type="String" default="''">
+  Search query text entered by the user.
+  
+  Used to filter records based on the selected `valueFilter` field.
+  
+  ```javascript
+  valueSearch = '';
+  ```
+</ParamField>
+
+## Selection Management
+
+<ParamField path="selectedRecords" type="Array" default="[]">
+  Array of currently selected Opportunity records.
+  
+  Populated by the datatable's row selection event handler. Contains full record objects.
+  
+  ```javascript
+  selectedRecords = [];
+  ```
+</ParamField>
+
+<ParamField path="preSelectedRows" type="Array" default="[]">
+  Array of record IDs to pre-select in the datatable.
+  
+  Used to maintain row selection state when switching between "All Records" and "Selected" views.
+  
+  ```javascript
+  preSelectedRows = [];
+  ```
+</ParamField>
+
+<ParamField path="hiddenCheckBox" type="Boolean" default="false">
+  Controls visibility of row selection checkboxes.
+  
+  Set to `true` when viewing selected records only, hiding checkboxes to prevent deselection.
+  
+  ```javascript
+  hiddenCheckBox = false;
+  ```
+</ParamField>
+
+<ParamField path="isSelected" type="Boolean" default="false">
+  Indicates whether the component is in "Selected Records" view mode.
+  
+  When `true`, the table displays only selected records and uses client-side filtering.
+  
+  ```javascript
+  isSelected = false;
+  ```
+</ParamField>
+
+## UI State Properties
+
+<ParamField path="showSpinner" type="Boolean" default="true">
+  Controls loading spinner visibility.
+  
+  Set to `false` after data is successfully loaded from the wire service.
+  
+  ```javascript
+  showSpinner = true;
+  ```
+</ParamField>
+
+<ParamField path="existingRecord" type="Boolean" default="true">
+  Indicates whether records exist in the current view.
+  
+  Set to `false` when attempting to view selected records with no selections made.
+  
+  ```javascript
+  existingRecord = true;
+  ```
+</ParamField>
+
+## Computed Properties (Getters)
+
+<ParamField path="options" type="Array" readOnly>
+  Returns filter field options for the combobox.
+  
+  Provides available field names that users can filter by.
+  
+  ```javascript
+  get options() {
+    return [
+      { label: 'None', value: '' },
+      { label: 'Name', value: 'Name' },
+      { label: 'StageName', value: 'StageName' },
+    ];
+  }
+  ```
+</ParamField>
+
+<ParamField path="selectedFilterValue" type="Boolean" readOnly>
+  Returns `true` if no filter field is selected.
+  
+  Used to disable or validate search functionality when no filter field is chosen.
+  
+  ```javascript
+  get selectedFilterValue() {
+    return this.valueFilter.trim() === "";
+  }
+  ```
+</ParamField>
+
+<ParamField path="getAllRecord" type="String" readOnly>
+  Returns formatted string showing total record count.
+  
+  Displays as "Records (X)" where X is the current table length.
+  
+  ```javascript
+  get getAllRecord() {
+    return `Records (${this.lengthTableData})`;
+  }
+  ```
+</ParamField>
+
+<ParamField path="getSelectedRecords" type="String" readOnly>
+  Returns formatted string showing selected record count.
+  
+  Displays as "Selected (X)" where X is the number of selected records.
+  
+  ```javascript
+  get getSelectedRecords() {
+    return `Selected (${this.selectedRecords.length})`;
+  }
+  ```
+</ParamField>

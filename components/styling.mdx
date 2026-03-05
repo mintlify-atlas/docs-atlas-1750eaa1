@@ -1,0 +1,380 @@
+---
+title: 'Component Styling'
+description: 'Lightning Design System integration and custom CSS styling'
+icon: 'paintbrush'
+---
+
+## Lightning Design System Integration
+
+The component leverages Salesforce Lightning Design System (SLDS) utility classes throughout its template for consistent styling and responsive behavior.
+
+### Card Container
+
+```html
+<lightning-card variant="Narrow" title="Action List Opportunity" icon-name="standard:opportunity">
+   <div class="slds-p-horizontal_small">
+      <!-- Component content -->
+   </div>
+</lightning-card>
+```
+
+<Info>
+The `lightning-card` component provides a standard Salesforce card layout with built-in header styling, icon placement, and border treatment.
+</Info>
+
+### Layout Components
+
+The component uses `lightning-layout` for responsive grid behavior:
+
+```html
+<lightning-layout multiple-rows>
+   <lightning-layout-item size="12" medium-device-size="2">
+      <!-- Filter combobox -->
+   </lightning-layout-item>
+   <lightning-layout-item size="12" padding="around-small" medium-device-size="6">
+      <!-- Search input -->
+   </lightning-layout-item>
+   <lightning-layout-item size="12" medium-device-size="4">
+      <!-- Action buttons -->
+   </lightning-layout-item>
+</lightning-layout>
+```
+
+## SLDS Utility Classes
+
+The component extensively uses SLDS utility classes for spacing, sizing, and layout:
+
+### Spacing Classes
+
+| Class | Purpose | Applied To |
+|-------|---------|------------|
+| `slds-p-horizontal_small` | Small horizontal padding | Main container |
+| `slds-m-vertical_medium` | Medium vertical margin | Filter section |
+| `slds-p-vertical_small` | Small vertical padding | Layout items |
+| `slds-m-right_medium` | Medium right margin | Buttons |
+
+### Button Styling
+
+```html
+<lightning-button 
+   variant="brand" 
+   label={getAllRecord} 
+   onclick={handleClickAllData} 
+   class="slds-m-right_medium">
+</lightning-button>
+```
+
+The `variant="brand"` applies Salesforce brand colors, while `slds-m-right_medium` adds spacing between buttons.
+
+### Alert Styling
+
+```html
+<div class="slds-notify slds-notify_alert slds-alert_warning" role="alert">
+   <span class="slds-assistive-text">warning</span>
+   <lightning-icon icon-name="utility:warning" title="warning"></lightning-icon>
+   <h2>No item selected</h2>
+</div>
+```
+
+<Note>
+SLDS alert classes provide accessible, semantic styling for warning messages with proper ARIA roles.
+</Note>
+
+## Custom CSS
+
+The component includes custom CSS in `operationDatatable.css` for specific layout requirements:
+
+### Full CSS File
+
+```css
+.view-table{
+   height: 300px;
+   position: relative;
+}
+
+.spinner-padding{
+   position: absolute;
+   top: 50%;
+   right: 50%;
+}
+
+.alert-warning{
+   position: absolute;
+   width: 100%;
+   top: 12%;
+}
+
+.button-information{
+   display: flex;
+   justify-content: flex-end;
+}
+```
+
+### CSS Class Breakdown
+
+<AccordionGroup>
+  <Accordion title=".view-table">
+    **Purpose**: Defines the datatable container with fixed height and relative positioning
+    
+    ```css
+    .view-table{
+       height: 300px;
+       position: relative;
+    }
+    ```
+    
+    - `height: 300px`: Fixed height enables vertical scrolling within the datatable
+    - `position: relative`: Allows absolute positioning of child elements (spinner, alert)
+    
+    <Tip>
+    Adjust the `height` value to show more or fewer rows in the initial view. Consider using `min-height` for responsive layouts.
+    </Tip>
+  </Accordion>
+  
+  <Accordion title=".spinner-padding">
+    **Purpose**: Centers the loading spinner within the datatable area
+    
+    ```css
+    .spinner-padding{
+       position: absolute;
+       top: 50%;
+       right: 50%;
+    }
+    ```
+    
+    - `position: absolute`: Positioned relative to `.view-table`
+    - `top: 50%`, `right: 50%`: Centers the spinner horizontally and vertically
+    
+    Applied to the spinner container:
+    ```html
+    <div if:true={showSpinner} class="slds-spinner_inline spinner-padding">
+       <lightning-spinner variant="brand" 
+                          alternative-text="Loading Cases" 
+                          size="medium">
+       </lightning-spinner>
+    </div>
+    ```
+  </Accordion>
+  
+  <Accordion title=".alert-warning">
+    **Purpose**: Positions the warning message over the datatable
+    
+    ```css
+    .alert-warning{
+       position: absolute;
+       width: 100%;
+       top: 12%;
+    }
+    ```
+    
+    - `position: absolute`: Overlays the datatable
+    - `width: 100%`: Spans full width of container
+    - `top: 12%`: Positioned near the top
+    
+    Displays when no records are selected:
+    ```html
+    <div if:false={existingRecord} class="alert-warning">
+       <div class="slds-notify slds-notify_alert slds-alert_warning" role="alert">
+          <span class="slds-assistive-text">warning</span>
+          <lightning-icon icon-name="utility:warning" title="warning"></lightning-icon>
+          <h2>No item selected</h2>
+       </div>
+    </div>
+    ```
+  </Accordion>
+  
+  <Accordion title=".button-information">
+    **Purpose**: Right-aligns the action buttons
+    
+    ```css
+    .button-information{
+       display: flex;
+       justify-content: flex-end;
+    }
+    ```
+    
+    - `display: flex`: Enables flexbox layout
+    - `justify-content: flex-end`: Aligns buttons to the right
+    
+    Applied to button container:
+    ```html
+    <div class="button-information">
+       <div class="custom-box">
+          <lightning-button variant="brand" label={getAllRecord} onclick={handleClickAllData}></lightning-button>
+          <lightning-button variant="brand" label={getSelectedRecords} onclick={handleClickSelected}></lightning-button>
+       </div>
+    </div>
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Styling Datatable Elements
+
+The `lightning-datatable` component inherits styling from SLDS with limited customization options:
+
+### Row Number Column
+
+```html
+show-row-number-column
+```
+
+This attribute adds a numbered column on the left side, styled automatically by SLDS.
+
+### Checkbox Column
+
+```html
+hide-checkbox-column={hiddenCheckBox}
+```
+
+Dynamically controls the visibility of the selection checkbox column. When `hiddenCheckBox` is `true` (in "Selected" view), checkboxes are hidden.
+
+### Datatable Variants
+
+The component can be customized by modifying the `lightning-card` variant:
+
+<CodeGroup>
+```html Narrow (Current)
+<lightning-card variant="Narrow" title="Action List Opportunity" icon-name="standard:opportunity">
+```
+
+```html No Border
+<lightning-card variant="Narrow" title="Action List Opportunity" icon-name="standard:opportunity">
+```
+
+```html Base (Default)
+<lightning-card title="Action List Opportunity" icon-name="standard:opportunity">
+```
+</CodeGroup>
+
+## Responsive Design Considerations
+
+The component uses responsive layout items that adapt to screen size:
+
+### Mobile Layout (size="12")
+
+On small screens, all items take full width:
+
+```html
+<lightning-layout-item size="12" medium-device-size="2">
+   <!-- Filter: Full width on mobile -->
+</lightning-layout-item>
+```
+
+### Medium+ Layout (medium-device-size)
+
+On medium and larger screens, items use grid columns:
+
+- **Filter combobox**: 2/12 columns (16.67%)
+- **Search input**: 6/12 columns (50%)
+- **Action buttons**: 4/12 columns (33.33%)
+
+### Fixed Height Considerations
+
+<Warning>
+The fixed `height: 300px` on `.view-table` may cause usability issues on small screens. Consider using responsive height values:
+
+```css
+.view-table{
+   height: 300px;
+   min-height: 200px;
+   max-height: 500px;
+}
+
+@media (max-width: 768px) {
+   .view-table {
+      height: 250px;
+   }
+}
+```
+</Warning>
+
+## Accessibility Styling
+
+The component follows SLDS accessibility patterns:
+
+### Assistive Text
+
+```html
+<span class="slds-assistive-text">warning</span>
+```
+
+The `slds-assistive-text` class visually hides content while keeping it accessible to screen readers.
+
+### ARIA Roles
+
+```html
+<div class="slds-notify slds-notify_alert slds-alert_warning" role="alert">
+```
+
+The `role="alert"` attribute announces important messages to screen readers.
+
+### Input Labels
+
+```html
+<lightning-input 
+   variant="label-hidden"
+   type="search" 
+   name="search" 
+   placeholder="Search here..."
+></lightning-input>
+```
+
+The `variant="label-hidden"` hides the label visually but maintains accessibility.
+
+## Customization Examples
+
+### Increase Datatable Height
+
+```css
+.view-table{
+   height: 500px; /* Increased from 300px */
+   position: relative;
+}
+```
+
+### Change Button Alignment
+
+```css
+.button-information{
+   display: flex;
+   justify-content: center; /* Center instead of flex-end */
+}
+```
+
+### Adjust Alert Position
+
+```css
+.alert-warning{
+   position: absolute;
+   width: 100%;
+   top: 25%; /* Moved lower from 12% */
+}
+```
+
+### Add Custom Box Styling
+
+The template references a `.custom-box` class that isn't defined in the CSS. You can add:
+
+```css
+.custom-box {
+   padding: 0.5rem;
+   background-color: var(--lwc-colorBackground);
+   border-radius: 0.25rem;
+}
+```
+
+<Tip>
+Use SLDS design tokens (CSS custom properties) like `var(--lwc-colorBackground)` to maintain theme consistency.
+</Tip>
+
+## Theme Compatibility
+
+The component uses SLDS components and utility classes, ensuring compatibility with:
+
+- Salesforce standard themes
+- Custom Lightning themes
+- Dark mode (when supported by your org)
+
+<Info>
+SLDS automatically adapts to the active theme without requiring custom CSS modifications.
+</Info>

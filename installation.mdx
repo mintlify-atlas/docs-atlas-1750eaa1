@@ -1,0 +1,338 @@
+---
+title: Installation
+description: Step-by-step guide to deploy Action List Opportunity component to your Salesforce org
+---
+
+## Prerequisites
+
+Before installing the Action List Opportunity component, ensure you have:
+
+<Steps>
+  <Step title="Salesforce Org">
+    - A Salesforce org (Developer Edition, Sandbox, or Production)
+    - System Administrator or equivalent permissions
+    - Enabled Lightning Experience
+  </Step>
+  
+  <Step title="Development Tools">
+    - [Salesforce CLI (SFDX)](https://developer.salesforce.com/tools/sfdxcli) installed
+    - Node.js version 14 or higher
+    - Git (optional, for cloning repository)
+  </Step>
+  
+  <Step title="User Permissions">
+    - Read access to Opportunity object
+    - Permission to create and edit Lightning pages
+    - Access to Lightning App Builder
+  </Step>
+</Steps>
+
+<Note>
+  This component uses Salesforce API version 55.0. Ensure your org supports this API version or higher.
+</Note>
+
+## Deployment Steps
+
+### Step 1: Verify Salesforce CLI Installation
+
+Confirm that Salesforce CLI is properly installed:
+
+```bash
+sf --version
+```
+
+You should see output similar to:
+```
+@salesforce/cli/2.x.x
+```
+
+### Step 2: Authenticate to Your Org
+
+Connect to your Salesforce org using the CLI:
+
+```bash
+sf org login web --alias MyOrg
+```
+
+This will open a browser window for authentication. Log in with your Salesforce credentials.
+
+<Tip>
+  Use a descriptive alias like "DevOrg" or "ProductionOrg" to easily identify your org later.
+</Tip>
+
+### Step 3: Navigate to Project Directory
+
+Change to the directory containing the component source code:
+
+```bash
+cd /path/to/source
+```
+
+Verify the project structure:
+
+```bash
+ls -la force-app/main/default/
+```
+
+You should see:
+- `lwc/` - Lightning Web Components directory
+- `classes/` - Apex classes directory
+
+### Step 4: Deploy to Your Org
+
+Deploy the component and Apex controller:
+
+```bash
+sf project deploy start --source-path force-app/main/default
+```
+
+<Warning>
+  If you encounter API version conflicts, update the `sfdx-project.json` file to match your org's API version.
+</Warning>
+
+Expected output:
+```
+Deploying v55.0 metadata to MyOrg...
+✔ Deploy Succeeded
+
+Deployed Source
+├─ ApexClass: OpportunityController
+├─ LightningComponentBundle: operationDatatable
+└─ Total: 2 components
+```
+
+### Step 5: Verify Deployment
+
+Confirm the component is available in your org:
+
+```bash
+sf apex run --target-org MyOrg --file -
+```
+
+Then enter:
+```apex
+System.debug(OpportunityController.getAllOpportunity('', ''));
+```
+
+Press Ctrl+D to execute. Check for successful execution without errors.
+
+## Alternative Deployment Methods
+
+### Using VS Code
+
+If you're using Visual Studio Code with Salesforce Extensions:
+
+<Steps>
+  <Step title="Open Project">
+    Open the project folder in VS Code
+  </Step>
+  
+  <Step title="Authorize Org">
+    Press `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux)
+    
+    Select: `SFDX: Authorize an Org`
+  </Step>
+  
+  <Step title="Deploy">
+    Right-click on `force-app` folder
+    
+    Select: `SFDX: Deploy Source to Org`
+  </Step>
+</Steps>
+
+### Using Metadata API
+
+For manual deployment:
+
+1. Create a deployment package with the following structure:
+```
+package/
+├── classes/
+│   ├── OpportunityController.cls
+│   └── OpportunityController.cls-meta.xml
+├── lwc/
+│   └── operationDatatable/
+│       ├── operationDatatable.html
+│       ├── operationDatatable.js
+│       └── operationDatatable.js-meta.xml
+└── package.xml
+```
+
+2. Deploy using Workbench or ANT Migration Tool
+
+## Add Component to Lightning Page
+
+<Steps>
+  <Step title="Open Lightning App Builder">
+    Navigate to **Setup** → **Lightning App Builder**
+    
+    Or edit an existing Lightning page
+  </Step>
+  
+  <Step title="Find Component">
+    In the Components panel, search for:
+    
+    **"Table Component Custom"** or **"operationDatatable"**
+  </Step>
+  
+  <Step title="Drag to Page">
+    Drag the component onto your Lightning page layout
+    
+    The component works on:
+    - App Pages
+    - Home Pages
+    - Record Pages
+  </Step>
+  
+  <Step title="Save and Activate">
+    Click **Save** then **Activate**
+    
+    Assign the page to desired apps and profiles
+  </Step>
+</Steps>
+
+<Note>
+  The component automatically adjusts to the width of its container. Place it in a full-width region for best results.
+</Note>
+
+## Verification Steps
+
+### Test Component Functionality
+
+<Steps>
+  <Step title="Navigate to Page">
+    Open the Lightning page where you added the component
+  </Step>
+  
+  <Step title="Check Data Display">
+    Verify that opportunity records are displayed in the datatable
+    
+    You should see columns: Name, StageName, CreatedDate, LeadSource
+  </Step>
+  
+  <Step title="Test Filtering">
+    - Select "Name" from the filter dropdown
+    - Enter a search term in the search box
+    - Verify records are filtered correctly
+  </Step>
+  
+  <Step title="Test Selection">
+    - Select one or more opportunities using checkboxes
+    - Click the "Selected (X)" button
+    - Verify only selected records are displayed
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+### Component Not Appearing in App Builder
+
+<AccordionGroup>
+  <Accordion title="Check Deployment Status">
+    Verify deployment succeeded:
+    ```bash
+    sf project deploy report --target-org MyOrg
+    ```
+  </Accordion>
+  
+  <Accordion title="Verify Component Configuration">
+    Check that `operationDatatable.js-meta.xml` contains:
+    ```xml
+    <isExposed>true</isExposed>
+    <targets>
+        <target>lightning__AppPage</target>
+        <target>lightning__RecordPage</target>
+        <target>lightning__HomePage</target>
+    </targets>
+    ```
+  </Accordion>
+  
+  <Accordion title="Clear Cache">
+    - Log out of Salesforce
+    - Clear browser cache
+    - Log back in and check again
+  </Accordion>
+</AccordionGroup>
+
+### No Data Displayed
+
+<AccordionGroup>
+  <Accordion title="Check Opportunity Access">
+    Ensure your user profile has Read access to:
+    - Opportunity object
+    - Fields: Name, StageName, CreatedDate, LeadSource
+  </Accordion>
+  
+  <Accordion title="Verify Opportunities Exist">
+    Create test opportunities if none exist:
+    ```apex
+    Opportunity opp = new Opportunity(
+        Name = 'Test Opportunity',
+        StageName = 'Prospecting',
+        CloseDate = Date.today().addDays(30)
+    );
+    insert opp;
+    ```
+  </Accordion>
+  
+  <Accordion title="Check Debug Logs">
+    Enable debug logs for your user:
+    - Setup → Debug Logs → New
+    - Add trace flag for your user
+    - Refresh component and check logs for errors
+  </Accordion>
+</AccordionGroup>
+
+### Filter Not Working
+
+<Tip>
+  The search functionality requires both a filter field (Name or StageName) to be selected AND a search term to be entered.
+</Tip>
+
+## Post-Installation Configuration
+
+### Customize Fields Displayed
+
+To add or modify columns in operationDatatable.js:
+
+```javascript
+const columns = [
+   { label: 'Name', fieldName: 'Name' },
+   { label: 'StageName', fieldName: 'StageName' },
+   { label: 'CreatedDate', fieldName: 'CreatedDate', type: 'date' },
+   { label: 'LeadSource', fieldName: 'LeadSource' },
+   // Add new column:
+   { label: 'Amount', fieldName: 'Amount', type: 'currency' },
+];
+```
+
+Update the SOQL query in OpportunityController.cls:
+
+```apex
+String query = 'SELECT Id, Name, StageName, CreatedDate, LeadSource, Amount FROM Opportunity';
+```
+
+### Add More Filter Options
+
+In operationDatatable.js, update the options getter:
+
+```javascript
+get options() {
+   return [
+      { label: 'None', value: '' },
+      { label: 'Name', value: 'Name' },
+      { label: 'StageName', value: 'StageName' },
+      { label: 'LeadSource', value: 'LeadSource' },
+   ];
+}
+```
+
+<Warning>
+  After modifying code, redeploy using `sf project deploy start` for changes to take effect.
+</Warning>
+
+## Next Steps
+
+<Card title="Quick Start Guide" icon="rocket" href="/quickstart">
+  Learn how to use the component features with step-by-step examples
+</Card>

@@ -1,0 +1,148 @@
+---
+title: Filtering Records
+description: Learn how to implement server-side and client-side filtering in the Action List Opportunity component
+---
+
+## Overview
+
+The Action List Opportunity component supports both server-side and client-side filtering to help users quickly find the records they need. The filtering system uses a combination of a combobox field selector and a search input.
+
+## Filter Architecture
+
+The component maintains two key state variables for filtering:
+
+```javascript
+valueFilter = '';  // Selected field to filter on
+valueSearch = '';  // Search term entered by user
+```
+
+## Server-Side Filtering
+
+When viewing all records (`isSelected = false`), the component uses server-side filtering through an imperative Apex call. This approach is efficient for large datasets.
+
+### Filter Change Handler
+
+The `handleChangeFilter` method orchestrates the filtering logic:
+
+```javascript operationDatatable.js
+handleChangeFilter(e) {
+   const action = e.target.dataset.filter;
+   if (action === "filter") {
+      this.valueFilter = e.detail.value;
+   }
+   if (action === "search") {
+      this.valueSearch = e.target.value.trim();
+   }
+   if (!this.isSelected) {
+      if (this.valueFilter.trim() !== "" && this.valueSearch.trim() !== "") {
+         this.filterRecordsTable();
+      } else if (this.valueSearch.trim() === "") {
+         this.tableData = this.data
+      }
+      this.lengthTableData = this.tableData.length;
+   } else {
+      this.filterTableDataSelected();
+   }
+}
+```
+
+<Note>
+The `dataset.filter` attribute determines whether the event came from the filter combobox or search input.
+</Note>
+
+### Server-Side Filter Implementation
+
+The `filterRecordsTable` method makes an imperative Apex call:
+
+```javascript operationDatatable.js:76-82
+filterRecordsTable() {
+   getAllOpportunity({ params: this.valueSearch, filterField: this.valueFilter })
+      .then(result => {
+         this.tableData = result;
+         this.lengthTableData = this.tableData.length;
+      }).catch(error => console.log(error))
+}
+```
+
+**Key behaviors:**
+- Only executes when both `valueFilter` and `valueSearch` are non-empty
+- Sends filter parameters to Apex controller
+- Updates `tableData` with filtered results
+- Updates the record count display
+
+## Client-Side Filtering
+
+When viewing selected records (`isSelected = true`), the component uses client-side filtering to avoid unnecessary server calls.
+
+### Selected Records Filter
+
+The `filterTableDataSelected` method filters the in-memory selected records:
+
+```javascript operationDatatable.js:105-118
+filterTableDataSelected() {
+   let filterSelectedRecords = [];
+   let tempSelectedrecords = [...this.selectedRecords];
+   if(this.valueSearch.length > 0 && this.valueFilter.length > 0){
+      filterSelectedRecords = this.selectedRecords.filter(items => {
+         if(!items?.[this.valueFilter].indexOf(this.valueSearch)){
+            return items;
+         }
+      })
+
+      tempSelectedrecords = filterSelectedRecords;
+   }
+   this.tableData = tempSelectedrecords;
+}
+```
+
+<Warning>
+This method uses `indexOf` for string matching, which performs exact substring matching and is case-sensitive.
+</Warning>
+
+## Combobox Filter Configuration
+
+The filter field options are defined in a getter:
+
+```javascript operationDatatable.js:120-126
+get options() {
+   return [
+      { label: 'None', value: '' },
+      { label: 'Name', value: 'Name' },
+      { label: 'StageName', value: 'StageName' },
+   ];
+}
+```
+
+## Filter Reset Behavior
+
+<Info>
+When the search input is cleared (`valueSearch.trim() === ""`), the table automatically resets to show all unfiltered data.
+</Info>
+
+```javascript
+else if (this.valueSearch.trim() === "") {
+   this.tableData = this.data
+}
+```
+
+## Usage Example
+
+1. **Select a field**: Choose "Name" or "StageName" from the combobox
+2. **Enter search term**: Type a value in the search input
+3. **Automatic filtering**: Results update as you type
+4. **Clear filters**: Clear the search input to see all records again
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Server-Side" icon="server">
+    Use for all records view with large datasets
+  </Card>
+  <Card title="Client-Side" icon="laptop">
+    Use for selected records view with smaller subsets
+  </Card>
+</CardGroup>
+
+<Tip>
+The component automatically chooses the appropriate filtering strategy based on the current view mode.
+</Tip>

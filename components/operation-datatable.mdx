@@ -1,0 +1,249 @@
+---
+title: 'Operation Datatable Component'
+description: 'Interactive Lightning datatable for managing and filtering Opportunity records'
+icon: 'table'
+---
+
+## Overview
+
+The `operationDatatable` component is a Lightning Web Component (LWC) that provides an interactive datatable interface for displaying, filtering, and selecting Opportunity records. It integrates with the Salesforce Lightning Design System and uses the `lightning-datatable` base component with custom filtering and selection capabilities.
+
+## Component Structure
+
+The component consists of four main files:
+
+<CardGroup cols={2}>
+  <Card title="operationDatatable.js" icon="js">
+    Main JavaScript controller with data management logic
+  </Card>
+  <Card title="operationDatatable.html" icon="code">
+    Lightning template with datatable and filter UI
+  </Card>
+  <Card title="operationDatatable.css" icon="paintbrush">
+    Custom styling for layout and positioning
+  </Card>
+  <Card title="operationDatatable.js-meta.xml" icon="file-code">
+    Component metadata and deployment targets
+  </Card>
+</CardGroup>
+
+## Data Flow
+
+The component uses a wire service to fetch Opportunity data from the Apex controller:
+
+```javascript
+@wire(getAllOpportunity, { params: '', filterField: '' })
+getAllOpportunityWire({ data, error }) {
+   if (data) {
+      this.data = data;
+      this.tableData = this.data;
+      this.lengthTableData = this.tableData.length;
+      this.showSpinner = false;
+   } else if (error) {
+      console.log(error);
+   }
+}
+```
+
+### Apex Controller Integration
+
+The component connects to the `OpportunityController.getAllOpportunity` method:
+
+```apex
+@AuraEnabled(cacheable=true)
+public static List<Opportunity> getAllOpportunity(String params, String filterField) {
+    String query = 'SELECT Id, Name, StageName, CreatedDate, LeadSource FROM Opportunity';
+    if(!String.isBlank(params) && !String.isBlank(filterField)){
+        String searchString = '\'%' + params + '%\'';
+        query = query + ' WHERE ' + filterField + ' LIKE ' + searchString;
+    }
+    return Database.query(query);
+}
+```
+
+<Info>
+The `@wire` adapter is cacheable, improving performance by reducing server calls when data hasn't changed.
+</Info>
+
+## Component Properties
+
+### Data Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `data` | Array | Original dataset from Apex wire service |
+| `tableData` | Array | Current filtered/displayed dataset |
+| `columns` | Array | Column definitions for the datatable |
+| `lengthTableData` | Number | Count of records in current view |
+
+### Filter Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `valueFilter` | String | Selected filter field (Name, StageName, etc.) |
+| `valueSearch` | String | Search term entered by user |
+| `options` | Array | Filter field options for combobox |
+
+### Selection Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `selectedRecords` | Array | Currently selected rows |
+| `preSelectedRows` | Array | Row IDs to pre-select when switching views |
+| `hiddenCheckBox` | Boolean | Controls checkbox column visibility |
+| `isSelected` | Boolean | Whether in "Selected" view mode |
+
+### UI State Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `showSpinner` | Boolean | Loading spinner visibility |
+| `existingRecord` | Boolean | Whether records exist (controls warning message) |
+
+## Column Configuration
+
+Columns are defined as a constant array:
+
+```javascript
+const columns = [
+   { label: 'Name', fieldName: 'Name' },
+   { label: 'StageName', fieldName: 'StageName' },
+   { label: 'CreatedDate', fieldName: 'CreatedDate', type: 'date' },
+   { label: 'LeadSource', fieldName: 'LeadSource' },
+];
+```
+
+Each column object supports:
+- `label`: Display name in table header
+- `fieldName`: API field name from Opportunity object
+- `type`: Data type (date, text, etc.)
+
+## Key Methods
+
+### handleRowSelectionTable(e)
+
+Captures selected rows from the datatable:
+
+```javascript
+handleRowSelectionTable(e) {
+   const selectedRows = JSON.parse(JSON.stringify(e.detail.selectedRows));
+   if (!this.hiddenCheckBox) {
+      this.selectedRecords = selectedRows;
+   }
+}
+```
+
+### handleChangeFilter(e)
+
+Processes filter and search input changes:
+
+```javascript
+handleChangeFilter(e) {
+   const action = e.target.dataset.filter;
+   if (action === "filter") {
+      this.valueFilter = e.detail.value;
+   }
+   if (action === "search") {
+      this.valueSearch = e.target.value.trim();
+   }
+   if (!this.isSelected) {
+      if (this.valueFilter.trim() !== "" && this.valueSearch.trim() !== "") {
+         this.filterRecordsTable();
+      } else if (this.valueSearch.trim() === "") {
+         this.tableData = this.data
+      }
+      this.lengthTableData = this.tableData.length;
+   } else {
+      this.filterTableDataSelected();
+   }
+}
+```
+
+### handleClickSelected()
+
+Switches to "Selected" view:
+
+```javascript
+handleClickSelected() {
+   if (this.selectedRecords.length === 0) {
+      this.existingRecord = false;
+   }
+   this.isSelected = true;
+   this.hiddenCheckBox = true;
+   this.tableData = this.selectedRecords;
+}
+```
+
+### handleClickAllData()
+
+Returns to full dataset view:
+
+```javascript
+handleClickAllData() {
+   this.existingRecord = true;
+   this.isSelected = false;
+   let preSelectedRowsId = [];
+   this.hiddenCheckBox = false;
+   this.selectedRecords.forEach(items => {
+      preSelectedRowsId.push(items.Id);
+   });
+   this.tableData = this.data;
+   this.preSelectedRows = preSelectedRowsId;
+}
+```
+
+## Usage Example
+
+Add the component to a Lightning page:
+
+```xml
+<template>
+   <c-operation-datatable></c-operation-datatable>
+</template>
+```
+
+### Deployment Targets
+
+Configured in `operationDatatable.js-meta.xml`:
+
+```xml
+<targets>
+    <target>lightning__AppPage</target>
+    <target>lightning__RecordPage</target>
+    <target>lightning__HomePage</target>
+</targets>
+```
+
+The component can be added to:
+- Lightning App Pages
+- Record Pages
+- Home Pages
+
+<Warning>
+The component requires API version 55.0 or higher and must have access to the `OpportunityController` Apex class.
+</Warning>
+
+## Datatable Properties
+
+The `lightning-datatable` uses these key properties:
+
+| Property | Value | Purpose |
+|----------|-------|----------|
+| `key-field` | "Id" | Unique identifier for each row |
+| `render-mode` | "role-based" | Accessibility-optimized rendering |
+| `render-config` | `{virtualize: 'vertical'}` | Virtual scrolling for performance |
+| `show-row-number-column` | true | Display row numbers |
+| `hide-checkbox-column` | Dynamic | Toggle selection checkboxes |
+| `selected-rows` | Dynamic | Pre-selected row IDs |
+
+## Component Lifecycle
+
+1. **Initialization**: Wire service fetches all Opportunities
+2. **Data Loading**: Spinner displays while data loads
+3. **Data Display**: Table populates with results
+4. **User Interaction**: Filtering, searching, and row selection
+5. **View Switching**: Toggle between all records and selected records
+
+<Tip>
+The component maintains selected rows when switching between "All Records" and "Selected" views, improving user experience.
+</Tip>

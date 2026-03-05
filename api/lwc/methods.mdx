@@ -1,0 +1,306 @@
+---
+title: 'Methods'
+description: 'Component methods and event handlers'
+---
+
+## Selection Methods
+
+### handleRowSelectionTable()
+
+Handles row selection events from the lightning-datatable component.
+
+**Signature:**
+```javascript
+handleRowSelectionTable(e)
+```
+
+**Parameters:**
+<ParamField path="e" type="Event" required>
+  Event object from lightning-datatable's `onrowselection` event.
+  
+  Contains `e.detail.selectedRows` with array of selected record objects.
+</ParamField>
+
+**Behavior:**
+- Extracts selected rows from event detail using `JSON.parse(JSON.stringify())`
+- Updates `selectedRecords` only when checkboxes are visible (`!hiddenCheckBox`)
+- Deep clones selected rows to prevent reference issues
+
+**Source:**
+```javascript
+handleRowSelectionTable(e) {
+  const selectedRows = JSON.parse(JSON.stringify(e.detail.selectedRows));
+  if (!this.hiddenCheckBox) {
+    this.selectedRecords = selectedRows;
+  }
+}
+```
+
+---
+
+### handleClickSelected()
+
+Switches the view to display only selected records.
+
+**Signature:**
+```javascript
+handleClickSelected()
+```
+
+**Parameters:**
+None
+
+**Behavior:**
+- Validates that records are selected (sets `existingRecord = false` if empty)
+- Sets `isSelected = true` to enable selected records view mode
+- Hides checkboxes by setting `hiddenCheckBox = true`
+- Updates `tableData` to show only `selectedRecords`
+
+**Source:**
+```javascript
+handleClickSelected() {
+  if (this.selectedRecords.length === 0) {
+    this.existingRecord = false;
+  }
+  this.isSelected = true;
+  this.hiddenCheckBox = true;
+  this.tableData = this.selectedRecords;
+}
+```
+
+---
+
+### handleClickAllData()
+
+Switches the view back to display all records with selections preserved.
+
+**Signature:**
+```javascript
+handleClickAllData()
+```
+
+**Parameters:**
+None
+
+**Behavior:**
+- Resets `existingRecord = true` to indicate records are present
+- Sets `isSelected = false` to disable selected records view mode
+- Shows checkboxes by setting `hiddenCheckBox = false`
+- Extracts selected record IDs into `preSelectedRows` array
+- Restores full dataset by setting `tableData = this.data`
+
+**Source:**
+```javascript
+handleClickAllData() {
+  this.existingRecord = true;
+  this.isSelected = false;
+  let preSelectedRowsId = [];
+  this.hiddenCheckBox = false;
+  this.selectedRecords.forEach(items => {
+    preSelectedRowsId.push(items.Id);
+  });
+  this.tableData = this.data;
+  this.preSelectedRows = preSelectedRowsId;
+}
+```
+
+---
+
+## Filter and Search Methods
+
+### filterRecordsTable()
+
+Performs server-side filtering by calling Apex controller imperatively.
+
+**Signature:**
+```javascript
+filterRecordsTable()
+```
+
+**Parameters:**
+None (uses component properties `valueSearch` and `valueFilter`)
+
+**Returns:**
+<ResponseField name="Promise" type="Promise<void>">
+  Resolves when filtered data is loaded, rejects on error.
+</ResponseField>
+
+**Behavior:**
+- Calls `getAllOpportunity` Apex method with current filter and search values
+- Updates `tableData` with filtered results
+- Updates `lengthTableData` with new record count
+- Logs errors to console if the operation fails
+
+**Source:**
+```javascript
+filterRecordsTable() {
+  getAllOpportunity({ params: this.valueSearch, filterField: this.valueFilter })
+    .then(result => {
+      this.tableData = result;
+      this.lengthTableData = this.tableData.length;
+    }).catch(error => console.log(error))
+}
+```
+
+---
+
+### handleChangeFilter()
+
+Handles changes to filter field selection and search input.
+
+**Signature:**
+```javascript
+handleChangeFilter(e)
+```
+
+**Parameters:**
+<ParamField path="e" type="Event" required>
+  Event object from combobox or input element.
+  
+  Must include `e.target.dataset.filter` to identify the action type ('filter' or 'search').
+</ParamField>
+
+**Behavior:**
+- Identifies action type from `e.target.dataset.filter` attribute
+- For "filter" action: updates `valueFilter` from `e.detail.value` (combobox)
+- For "search" action: updates `valueSearch` from `e.target.value` (input field)
+- In "All Records" mode (`!isSelected`):
+  - Triggers server-side filtering if both filter and search values are non-empty
+  - Resets to full dataset if search is empty
+  - Updates `lengthTableData`
+- In "Selected Records" mode (`isSelected`):
+  - Calls `filterTableDataSelected()` for client-side filtering
+
+**Source:**
+```javascript
+handleChangeFilter(e) {
+  const action = e.target.dataset.filter;
+  if (action === "filter") {
+    this.valueFilter = e.detail.value;
+  }
+  if (action === "search") {
+    this.valueSearch = e.target.value.trim();
+  }
+  if (!this.isSelected) {
+    if (this.valueFilter.trim() !== "" && this.valueSearch.trim() !== "") {
+      this.filterRecordsTable();
+    } else if (this.valueSearch.trim() === "") {
+      this.tableData = this.data
+    }
+    this.lengthTableData = this.tableData.length;
+  } else {
+    this.filterTableDataSelected();
+  }
+}
+```
+
+---
+
+### filterTableDataSelected()
+
+Performs client-side filtering on selected records.
+
+**Signature:**
+```javascript
+filterTableDataSelected()
+```
+
+**Parameters:**
+None (uses component properties `valueSearch`, `valueFilter`, and `selectedRecords`)
+
+**Behavior:**
+- Creates temporary copy of `selectedRecords`
+- Filters records based on `valueFilter` field containing `valueSearch` text
+- Uses `indexOf()` to perform substring matching
+- Updates `tableData` with filtered results or all selected records if no filters
+
+**Source:**
+```javascript
+filterTableDataSelected() {
+  let filterSelectedRecords = [];
+  let tempSelectedrecords = [...this.selectedRecords];
+  if(this.valueSearch.length > 0 && this.valueFilter.length > 0){
+    filterSelectedRecords = this.selectedRecords.filter(items => {
+      if(!items?.[this.valueFilter].indexOf(this.valueSearch)){
+        return items;
+      }
+    })
+    tempSelectedrecords = filterSelectedRecords;
+  }
+  this.tableData = tempSelectedrecords;
+}
+```
+
+---
+
+## Utility Methods
+
+### handleRefreshTable()
+
+Refreshes the datatable by re-fetching data from the wire service.
+
+**Signature:**
+```javascript
+handleRefreshTable()
+```
+
+**Parameters:**
+None
+
+**Behavior:**
+- Calls `refreshApex()` to refresh the wired data
+- Note: Current implementation passes `tableData` instead of the wire result object
+
+**Source:**
+```javascript
+handleRefreshTable() {
+  refreshApex(this.tableData);
+}
+```
+
+---
+
+## Wire Service Methods
+
+### getAllOpportunityWire()
+
+Wired method that automatically fetches all Opportunity records on component initialization.
+
+**Signature:**
+```javascript
+@wire(getAllOpportunity, { params: '', filterField: '' })
+getAllOpportunityWire({ data, error })
+```
+
+**Parameters:**
+<ParamField path="data" type="Array">
+  Array of Opportunity records returned from Apex controller.
+</ParamField>
+
+<ParamField path="error" type="Object">
+  Error object if the Apex call fails.
+</ParamField>
+
+**Behavior:**
+- On success:
+  - Stores records in `this.data`
+  - Initializes `tableData` with all records
+  - Updates `lengthTableData` with record count
+  - Hides loading spinner
+- On error:
+  - Logs error to console
+
+**Source:**
+```javascript
+@wire(getAllOpportunity, { params: '', filterField: '' })
+getAllOpportunityWire({ data, error }) {
+  if (data) {
+    this.data = data;
+    this.tableData = this.data;
+    this.lengthTableData = this.tableData.length;
+    this.showSpinner = false;
+  } else if (error) {
+    console.log(error);
+  }
+}
+```
